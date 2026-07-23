@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Forex Bot Control Engine</title>
+    <!-- Socket.IO Library -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- External CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <header class="app-header">
+        <h2>Custom Forex Bot Control Engine</h2>
+    </header>
+
+    <main class="dashboard-grid">
+        <!-- Configuration Card -->
+        <section class="card config-card">
+            <h3>Trading Configuration</h3>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="symbol">Symbol</label>
+                    <select id="symbol">
+                        <option value="EURUSD">EURUSD</option>
+                        <option value="EURAUD">EURAUD</option>
+                        <option value="AUDUSD">AUDUSD</option>
+                        <option value="EURGBP">EURGBP</option>
+                        <option value="EURCAD">EURCAD</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="risk-percentage">Risk Percentage (%)</label>
+                    <input id="risk-percentage" type="number" value="1" min="0.01" max="2" step="0.01">
+                </div>
+
+                <div class="form-group">
+                    <label for="stop-loss">Stop Loss (pips)</label>
+                    <input id="stop-loss" type="number" value="20" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label for="take-profit">Take Profit (pips)</label>
+                    <input id="take-profit" type="number" value="40" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label for="max-open-positions">Max Open Positions</label>
+                    <input id="max-open-positions" type="number" value="1" min="1">
+                </div>
+
+                <div class="form-group">
+                    <label for="max-daily-loss">Max Daily Loss (%)</label>
+                    <input id="max-daily-loss" type="number" value="3" min="0.1" step="0.1">
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="max-spread">Max Spread (pips)</label>
+                    <input id="max-spread" type="number" value="2" min="0.1" step="0.1">
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="start-btn" class="btn btn-start">Start Engine</button>
+                <button id="stop-btn" class="btn btn-stop" disabled>Stop Engine</button>
+            </div>
+        </section>
+
+        <!-- Monitoring Section -->
+        <div class="monitor-column">
+            <!-- Risk Monitor Card -->
+            <section class="card">
+                <h3>Risk Monitor</h3>
+                <div class="stat-list">
+                    <div class="stat-item">
+                        <span>Daily Drawdown:</span>
+                        <strong id="daily-drawdown">0.00%</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>Daily Loss Protection:</span>
+                        <strong id="daily-risk-status" class="status-active">ACTIVE</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>Open Positions:</span>
+                        <strong id="open-positions">0</strong>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Live Market Card -->
+            <section class="card">
+                <h3>Live Market</h3>
+                <div class="stat-list">
+                    <div class="stat-item">
+                        <span>Symbol:</span>
+                        <strong id="symbol-display">EURUSD</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>Price:</span>
+                        <strong id="price-display">--.-----</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>Position:</span>
+                        <strong id="position-display">NONE</strong>
+                    </div>
+                    <div class="stat-item">
+                        <span>Engine:</span>
+                        <strong id="status-display" class="status-stopped">STOPPED</strong>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Alerts Log -->
+            <section class="card">
+                <h3>System Alerts</h3>
+                <div id="alerts" class="alerts-container"></div>
+            </section>
+        </div>
+    </main>
+
+    <!-- External JavaScript -->
+    <script src="/static/js/index.js"></script>
+</body>
+</html>

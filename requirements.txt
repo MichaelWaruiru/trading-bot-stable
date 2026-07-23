@@ -1,0 +1,8 @@
+MetaTrader5
+pandas
+matplotlib
+Flask
+eventlet
+pandas-ta
+Flask-SocketIO
+python-dotenv

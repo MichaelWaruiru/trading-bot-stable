@@ -1,26 +1,12 @@
 import logging
 import MetaTrader5 as mt5
 from threading import Thread
-
 from flask import Flask, render_template
 from flask_socketio import SocketIO
-
-from config.settings import (
-    DEFAULT_SYMBOL,
-    DEFAULT_RISK_PERCENTAGE
-)
-
+from config.settings import DEFAULT_SYMBOL, DEFAULT_RISK_PERCENTAGE
 from trading.engine import TradingEngine
-
-from trading.meta5 import (
-    initialize_mt5,
-    select_symbol,
-    get_symbol_info
-)
-
-from trading.risk import (
-    validate_trading_config
-)
+from trading.meta5 import initialize_mt5, select_symbol, get_symbol_info
+from trading.risk import validate_trading_config
 
 app = Flask(__name__)
 
@@ -36,58 +22,35 @@ logging.basicConfig(
 
 # MetaTrader 5 initialization
 if not initialize_mt5():
-
     raise RuntimeError(
         "Could not initialize MetaTrader 5."
     )
 
+if not select_symbol(DEFAULT_SYMBOL):
+    raise RuntimeError(f"Could not select {DEFAULT_SYMBOL}.")
 
-if not select_symbol(
-    DEFAULT_SYMBOL
-):
-
-    raise RuntimeError(
-        f"Could not select {DEFAULT_SYMBOL}."
-    )
-
-symbol_info = get_symbol_info(
-    DEFAULT_SYMBOL
-)
+symbol_info = get_symbol_info(DEFAULT_SYMBOL)
 
 if symbol_info is None:
-
     raise RuntimeError(
         f"Could not get information for "
         f"{DEFAULT_SYMBOL}."
     )
 
-logging.info(
-    "%s found - Bid: %s, Ask: %s",
-    DEFAULT_SYMBOL,
-    symbol_info.bid,
-    symbol_info.ask
-)
+logging.info("%s found - Bid: %s, Ask: %s", DEFAULT_SYMBOL, symbol_info.bid, symbol_info.ask)
 
 # Trading engine
-engine = TradingEngine(
-    socketio
-)
-
+engine = TradingEngine(socketio)
 
 # Web routes
 @app.route("/")
 def index():
-
-    return render_template(
-        "index.html"
-    )
+    return render_template("index.html")
 
 # Start bot
 @socketio.on("start_bot")
 def start_bot(data):
-
     try:
-
         config = {
             "symbol":
                 data.get(
@@ -158,12 +121,9 @@ def start_bot(data):
         return
 
     # Validate configuration
-    errors = validate_trading_config(
-        config
-    )
+    errors = validate_trading_config(config)
 
     if errors:
-
         socketio.emit(
             "alert",
             {
@@ -175,10 +135,7 @@ def start_bot(data):
         return
 
     # Make sure symbol exists
-    if not select_symbol(
-        config["symbol"]
-    ):
-
+    if not select_symbol(config["symbol"]):
         socketio.emit(
             "alert",
             {
@@ -192,9 +149,7 @@ def start_bot(data):
         return
 
     # Start engine
-    engine.start(
-        config
-    )
+    engine.start(config)
 
     socketio.emit(
         "bot_status",
@@ -217,7 +172,6 @@ def stop_bot():
 
 # Application startup
 if __name__ == "__main__":
-
     engine_thread = Thread(
         target=engine.run,
         daemon=True
@@ -229,5 +183,6 @@ if __name__ == "__main__":
     socketio.run(
         app,
         debug=True,
+        use_reloader=False,
         port=5000
     )

@@ -3,29 +3,10 @@ import time
 import MetaTrader5 as mt5
 import pandas as pd
 from datetime import datetime
-
-from trading.meta5 import (
-    get_current_tick,
-    get_symbol_info
-)
-
-from trading.strategy import (
-    calculate_rsi,
-    generate_rsi_signal
-)
-
-from trading.risk import (
-    can_open_position,
-    check_spread,
-    calculate_position_size,
-    get_open_positions,
-    get_daily_starting_equity,
-    check_daily_drawdown
-)
-
-from trading.execution import (
-    execute_market_order
-)
+from trading.meta5 import get_current_tick, get_symbol_info
+from trading.strategy import calculate_rsi, generate_rsi_signal
+from trading.risk import can_open_position, check_spread, calculate_position_size, get_open_positions, get_daily_starting_equity, check_daily_drawdown
+from trading.execution import execute_market_order
 
 class TradingEngine:
     def __init__(self, socketio):
@@ -54,7 +35,7 @@ class TradingEngine:
         self.last_drawdown_alert = None
         self.daily_starting_equity = (get_daily_starting_equity())
 
-        if (self.daily_starting_equity is None):
+        if self.daily_starting_equity is None:
             logging.error(
                 (
                     "Could not determine "
@@ -276,7 +257,7 @@ class TradingEngine:
         Check account equity against the
         daily drawdown limit.
         """
-        if (self.daily_starting_equity is None):
+        if self.daily_starting_equity is None:
             return
 
         account_info = (mt5.account_info())
@@ -386,6 +367,7 @@ class TradingEngine:
         self.last_drawdown_alert = None
         self.state["daily_loss_blocked"] = False
         self.state["daily_drawdown"] = 0.0
+
 
         logging.info(
             (

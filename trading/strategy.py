@@ -61,11 +61,11 @@ def generate_rsi_signal(
 
 
     # RSI crossed into oversold territory
-    if (previous_rsi >= oversold and current_rsi < oversold):
+    if previous_rsi >= oversold and current_rsi < oversold:
         return "long"
 
     # RSI crossed into overbought territory
-    if (previous_rsi <= overbought and current_rsi > overbought):
+    if previous_rsi <= overbought and current_rsi > overbought:
         return "short"
 
     return None

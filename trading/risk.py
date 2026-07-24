@@ -2,7 +2,6 @@ import math
 from datetime import datetime
 import MetaTrader5 as mt5
 
-
 def validate_trading_config(config):
     """
     Validate user-provided trading parameters.
@@ -55,7 +54,6 @@ def validate_trading_config(config):
 
     return errors
 
-
 def get_open_positions(symbol=None):
     """
     Get actual open positions from MetaTrader 5.
@@ -67,35 +65,27 @@ def get_open_positions(symbol=None):
     """
 
     if symbol:
-
         positions = mt5.positions_get(
             symbol=symbol
         )
 
     else:
-
         positions = mt5.positions_get()
 
-
     if positions is None:
-
         return ()
 
-
     return positions
-
 
 def count_open_positions(symbol=None):
     """
     Count actual open MT5 positions.
     """
-
     positions = get_open_positions(
         symbol
     )
 
     return len(positions)
-
 
 def can_open_position(config):
     """
@@ -105,18 +95,13 @@ def can_open_position(config):
     Returns:
         tuple[bool, str]
     """
-
     open_positions = count_open_positions(
         config["symbol"]
     )
 
-    maximum = config[
-        "max_open_positions"
-    ]
-
+    maximum = config["max_open_positions"]
 
     if open_positions >= maximum:
-
         return (
             False,
             (
@@ -127,12 +112,10 @@ def can_open_position(config):
             )
         )
 
-
     return (
         True,
         "Position limit check passed."
     )
-
 
 def get_pip_size(symbol_info):
     """
@@ -147,9 +130,7 @@ def get_pip_size(symbol_info):
     Returns:
         float
     """
-
     if symbol_info.digits in (3, 5):
-
         return symbol_info.point * 10
 
     return symbol_info.point
@@ -159,7 +140,6 @@ def get_spread_pips(symbol_info, tick):
     """
     Calculate current spread in pips.
     """
-
     pip_size = get_pip_size(
         symbol_info
     )
@@ -168,12 +148,7 @@ def get_spread_pips(symbol_info, tick):
 
     return spread / pip_size
 
-
-def check_spread(
-    config,
-    symbol_info,
-    tick
-):
+def check_spread(config, symbol_info, tick):
     """
     Check whether current spread is
     within the configured limit.
@@ -181,19 +156,11 @@ def check_spread(
     Returns:
         tuple[bool, str, float]
     """
+    spread_pips = get_spread_pips(symbol_info, tick)
 
-    spread_pips = get_spread_pips(
-        symbol_info,
-        tick
-    )
-
-    maximum_spread = config[
-        "max_spread_pips"
-    ]
-
+    maximum_spread = config["max_spread_pips"]
 
     if spread_pips > maximum_spread:
-
         return (
             False,
             (
@@ -205,7 +172,6 @@ def check_spread(
             spread_pips
         )
 
-
     return (
         True,
         (
@@ -215,25 +181,18 @@ def check_spread(
         spread_pips
     )
 
-
-def normalize_volume(
-    volume,
-    symbol_info
-):
+def normalize_volume(volume, symbol_info):
     """
     Normalize volume according to the
     broker's minimum, maximum and step.
     """
-
     volume_min = symbol_info.volume_min
     volume_max = symbol_info.volume_max
     volume_step = symbol_info.volume_step
 
 
     if volume_step <= 0:
-
         return None
-
 
     volume = max(
         volume_min,
@@ -243,7 +202,6 @@ def normalize_volume(
         )
     )
 
-
     steps = math.floor(
         volume / volume_step
     )
@@ -251,7 +209,6 @@ def normalize_volume(
     normalized_volume = (
         steps * volume_step
     )
-
 
     normalized_volume = max(
         volume_min,
@@ -261,43 +218,22 @@ def normalize_volume(
         )
     )
 
-
     # Determine decimal precision
     # required by the volume step.
-
     if volume_step >= 1:
-
         decimals = 0
-
     elif volume_step >= 0.1:
-
         decimals = 1
-
     elif volume_step >= 0.01:
-
         decimals = 2
-
     elif volume_step >= 0.001:
-
         decimals = 3
-
     else:
-
         decimals = 4
 
+    return round(normalized_volume, decimals)
 
-    return round(
-        normalized_volume,
-        decimals
-    )
-
-
-def calculate_position_size(
-    account_balance,
-    risk_percentage,
-    stop_loss_pips,
-    symbol_info
-):
+def calculate_position_size(account_balance, risk_percentage, stop_loss_pips, symbol_info):
     """
     Calculate position volume using
     the symbol's actual tick value.
@@ -308,80 +244,40 @@ def calculate_position_size(
     Uses MT5 tick size and tick value
     rather than assuming $10 per pip.
     """
-
     if account_balance <= 0:
-
         return None
-
 
     if risk_percentage <= 0:
-
         return None
-
 
     if stop_loss_pips <= 0:
-
         return None
-
 
     tick_size = symbol_info.trade_tick_size
     tick_value = symbol_info.trade_tick_value
 
-
     if tick_size <= 0 or tick_value <= 0:
-
         return None
 
+    pip_size = get_pip_size(symbol_info)
 
-    pip_size = get_pip_size(
-        symbol_info
-    )
+    risk_amount = (account_balance * risk_percentage / 100)
 
-
-    risk_amount = (
-        account_balance
-        * risk_percentage
-        / 100
-    )
-
-
-    loss_per_lot = (
-        stop_loss_pips
-        * pip_size
-        / tick_size
-        * tick_value
-    )
-
+    loss_per_lot = (stop_loss_pips * pip_size / tick_size * tick_value)
 
     if loss_per_lot <= 0:
-
         return None
 
+    raw_volume = (risk_amount / loss_per_lot)
 
-    raw_volume = (
-        risk_amount
-        / loss_per_lot
-    )
-
-
-    return normalize_volume(
-        raw_volume,
-        symbol_info
-    )
+    return normalize_volume(raw_volume, symbol_info)
     
 def get_start_of_day():
     """
     Return the current day at midnight.
     """
-
     now = datetime.now()
-
-    return datetime(
-        now.year,
-        now.month,
-        now.day
-    )
-
+    return datetime(now.year, now.month, now.day)
 
 def get_daily_starting_equity():
     """
@@ -394,74 +290,41 @@ def get_daily_starting_equity():
     This reconstructs the approximate equity
     before today's realized trading activity.
     """
-
     account_info = mt5.account_info()
-
     if account_info is None:
-
         return None
-
 
     start_of_day = get_start_of_day()
 
-
-    deals = mt5.history_deals_get(
-        start_of_day,
-        datetime.now()
-    )
-
+    deals = mt5.history_deals_get(start_of_day, datetime.now())
 
     if deals is None:
-
         return account_info.equity
 
-
     realized_profit = 0.0
-
 
     for deal in deals:
 
         # Only count closing deals.
-        #
         # Entry OUT represents a position
         # being closed.
-
         if deal.entry == mt5.DEAL_ENTRY_OUT:
+            realized_profit += (deal.profit + deal.swap + deal.commission)
 
-            realized_profit += (
-                deal.profit
-                + deal.swap
-                + deal.commission
-            )
-
-
-    starting_equity = (
-        account_info.equity
-        - realized_profit
-    )
-
+    starting_equity = (account_info.equity - realized_profit)
 
     return starting_equity
 
-
-def calculate_daily_drawdown(
-    starting_equity,
-    current_equity
-):
+def calculate_daily_drawdown(starting_equity, current_equity):
     """
     Calculate current daily equity drawdown
     as a percentage.
     """
-
     if starting_equity is None:
-
         return None
-
 
     if starting_equity <= 0:
-
         return None
-
 
     drawdown = (
         (
@@ -471,18 +334,9 @@ def calculate_daily_drawdown(
         / starting_equity
     ) * 100
 
+    return max(0.0, drawdown)
 
-    return max(
-        0.0,
-        drawdown
-    )
-
-
-def check_daily_drawdown(
-    config,
-    starting_equity,
-    current_equity
-):
+def check_daily_drawdown(config, starting_equity, current_equity):
     """
     Determine whether the daily loss limit
     has been breached.
@@ -495,29 +349,18 @@ def check_daily_drawdown(
     False means the circuit breaker has
     been triggered.
     """
-
-    drawdown = calculate_daily_drawdown(
-        starting_equity,
-        current_equity
-    )
-
+    drawdown = calculate_daily_drawdown(starting_equity, current_equity)
 
     if drawdown is None:
-
         return (
             False,
             "Unable to calculate daily drawdown.",
             0.0
         )
 
-
-    maximum_drawdown = config[
-        "max_daily_loss_percentage"
-    ]
-
+    maximum_drawdown = config["max_daily_loss_percentage"]
 
     if drawdown >= maximum_drawdown:
-
         return (
             False,
             (
@@ -529,7 +372,6 @@ def check_daily_drawdown(
             ),
             drawdown
         )
-
 
     return (
         True,

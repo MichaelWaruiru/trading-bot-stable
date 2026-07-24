@@ -4,18 +4,15 @@ import pandas_ta as ta
 RSI_OVERSOLD = 30
 RSI_OVERBOUGHT = 70
 
-
 def calculate_rsi(data, length=14):
     """
     Calculate RSI for the supplied candle data.
     """
-
     data["rsi"] = data.ta.rsi(
         length=length
     )
 
     return data
-
 
 def generate_rsi_signal(
     data,
@@ -41,28 +38,18 @@ def generate_rsi_signal(
     """
 
     if data is None or data.empty:
-
         return None
-
 
     if "rsi" not in data.columns:
-
         return None
-
 
     if len(data) < 2:
 
         return None
 
+    previous_rsi = data["rsi"].iloc[-2]
 
-    previous_rsi = data[
-        "rsi"
-    ].iloc[-2]
-
-    current_rsi = data[
-        "rsi"
-    ].iloc[-1]
-
+    current_rsi = data["rsi"].iloc[-1]
 
     if pd.isna(
         previous_rsi
@@ -73,28 +60,12 @@ def generate_rsi_signal(
         return None
 
 
-    # -----------------------------------------
     # RSI crossed into oversold territory
-    # -----------------------------------------
-
-    if (
-        previous_rsi >= oversold
-        and current_rsi < oversold
-    ):
-
+    if (previous_rsi >= oversold and current_rsi < oversold):
         return "long"
 
-
-    # -----------------------------------------
     # RSI crossed into overbought territory
-    # -----------------------------------------
-
-    if (
-        previous_rsi <= overbought
-        and current_rsi > overbought
-    ):
-
+    if (previous_rsi <= overbought and current_rsi > overbought):
         return "short"
-
 
     return None

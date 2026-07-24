@@ -1,12 +1,7 @@
 import logging
-
 import MetaTrader5 as mt5
 
-
-def get_order_price(
-    tick,
-    order_type
-):
+def get_order_price(tick, order_type):
     """
     Return the correct execution price.
 
@@ -18,22 +13,13 @@ def get_order_price(
 
         return tick.ask
 
-
     if order_type == mt5.ORDER_TYPE_SELL:
 
         return tick.bid
 
-
     return None
 
-
-def calculate_sl_tp(
-    entry_price,
-    order_type,
-    stop_loss_pips,
-    take_profit_pips,
-    symbol_info
-):
+def calculate_sl_tp(entry_price, order_type, stop_loss_pips, take_profit_pips, symbol_info):
     """
     Calculate Stop Loss and Take Profit
     based on the entry price.
@@ -108,33 +94,17 @@ def calculate_sl_tp(
             )
         )
 
-
     else:
 
         return None, None
 
-
-    sl = round(
-        sl,
-        symbol_info.digits
-    )
-
-    tp = round(
-        tp,
-        symbol_info.digits
-    )
-
+    sl = round(sl, symbol_info.digits)
+    tp = round(tp, symbol_info.digits)
 
     return sl, tp
 
 
-def execute_market_order(
-    config,
-    symbol_info,
-    tick,
-    order_type,
-    volume
-):
+def execute_market_order(config, symbol_info, tick, order_type, volume):
     """
     Validate and execute a market order.
 
@@ -146,12 +116,10 @@ def execute_market_order(
         "symbol"
     ]
 
-
     entry_price = get_order_price(
         tick,
         order_type
     )
-
 
     if entry_price is None:
 
@@ -160,7 +128,6 @@ def execute_market_order(
             "Invalid order type.",
             None
         )
-
 
     sl, tp = calculate_sl_tp(
         entry_price,
@@ -174,7 +141,6 @@ def execute_market_order(
         symbol_info
     )
 
-
     if sl is None or tp is None:
 
         return (
@@ -183,46 +149,21 @@ def execute_market_order(
             None
         )
 
-
     request = {
 
-        "action":
-            mt5.TRADE_ACTION_DEAL,
-
-        "symbol":
-            symbol,
-
-        "volume":
-            volume,
-
-        "type":
-            order_type,
-
-        "price":
-            entry_price,
-
-        "sl":
-            sl,
-
-        "tp":
-            tp,
-
-        "deviation":
-            20,
-
-        "magic":
-            123456,
-
-        "comment":
-            "Python Bot Order",
-
-        "type_time":
-            mt5.ORDER_TIME_GTC,
-
-        "type_filling":
-            mt5.ORDER_FILLING_IOC
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": symbol,
+        "volume": volume,
+        "type": order_type,
+        "price": entry_price,
+        "sl": sl,
+        "tp": tp,
+        "deviation": 20,
+        "magic": 123456,
+        "comment": "Python Bot Order",
+        "type_time": mt5.ORDER_TIME_GTC,
+        "type_filling": mt5.ORDER_FILLING_IOC
     }
-
 
     logging.info(
         "Preparing order: "
@@ -235,15 +176,10 @@ def execute_market_order(
         tp
     )
 
-
-    # -----------------------------------------
     # Validate order with MT5 before execution
-    # -----------------------------------------
-
     check_result = mt5.order_check(
         request
     )
-
 
     if check_result is None:
 
@@ -256,7 +192,6 @@ def execute_market_order(
             None
         )
 
-
     if check_result.retcode != 0:
 
         return (
@@ -268,15 +203,10 @@ def execute_market_order(
             check_result
         )
 
-
-    # -----------------------------------------
     # Execute order
-    # -----------------------------------------
-
     result = mt5.order_send(
         request
     )
-
 
     if result is None:
 
@@ -288,7 +218,6 @@ def execute_market_order(
             ),
             None
         )
-
 
     if result.retcode != mt5.TRADE_RETCODE_DONE:
 
@@ -302,14 +231,12 @@ def execute_market_order(
             result
         )
 
-
     logging.info(
         "Order executed successfully: "
         "%s | Ticket: %s",
         symbol,
         result.order
     )
-
 
     return (
         True,

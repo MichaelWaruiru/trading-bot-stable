@@ -171,18 +171,12 @@ def stop_bot():
     )
 
 # Application startup
-if __name__ == "__main__":
-    engine_thread = Thread(
-        target=engine.run,
-        daemon=True
-    )
+engine = TradingEngine(socketio)
 
-    engine_thread.start()
+# Start trading engine worker
+engine_thread = Thread(
+    target=engine.run,
+    daemon=True
+)
 
-
-    socketio.run(
-        app,
-        debug=True,
-        use_reloader=False,
-        port=5000
-    )
+engine_thread.start()

@@ -17,6 +17,7 @@ class TradingEngine:
         self.daily_loss_blocked = False
         self.last_drawdown_alert = None
         self.risk_date = None
+        self.loop_interval = 1
         self.state = {
             "current_price": 0.0,
             "position": None,
@@ -33,6 +34,7 @@ class TradingEngine:
         self.running = True
         self.daily_loss_blocked = False
         self.last_drawdown_alert = None
+        self.risk_date = datetime.now().date()
         self.daily_starting_equity = (get_daily_starting_equity())
 
         if self.daily_starting_equity is None:
@@ -66,11 +68,15 @@ class TradingEngine:
         self._send_alert("Trading engine stopped.")
 
     def run(self):
+        """
+        Run the trading engine worker loop
+        """
+        logging.info("Tading engine worker started")
         while True:
             try:
                 # No configuration yet
                 if self.config is None:
-                    time.sleep(1)
+                    time.sleep(self.loop_interval)
                     continue
                   
                 self._reset_daily_risk_if_needed()
@@ -81,14 +87,18 @@ class TradingEngine:
                 symbol_info = (get_symbol_info(symbol))
 
                 if symbol_info is None:
-                    time.sleep(1)
+                    logging.error( ( "Unable to retrieve " "symbol information " "for %s. MT5 error: %s" ), symbol, mt5.last_error() )
+                    
+                    time.sleep(self.loop_interval)
                     continue
 
                 # Get latest tick
                 tick = (get_current_tick(symbol))
 
                 if tick is None:
-                    time.sleep(1)
+                    logging.error( ( "Unable to retrieve " "current tick for %s. " "MT5 error: %s" ), symbol, mt5.last_error() )
+                    
+                    time.sleep(self.loop_interval)
                     continue
 
                 self.state["current_price"] = tick.ask
@@ -98,39 +108,47 @@ class TradingEngine:
 
                 # Check daily drawdown
                 self._check_daily_risk()
+                
+                # Calculate current spread
+                spread = (tick.ask - tick.bid)
+                
+                spread_pips = (spread / (symbol_info.point * 10 if symbol_info.digits in (3, 5) else symbol_info.point))
+                
+                # Log current market state
+                logging.info( ( "MARKET | %s | " "Bid: %.*f | " "Ask: %.*f | " "Spread: %.2f pips | " "Position: %s | " "Open: %s | " "Engine: %s" ), symbol, symbol_info.digits, tick.bid, symbol_info.digits, tick.ask, spread_pips, self.state["position"], self.state["open_positions"], ( "RUNNING" if self.running else "STOPPED" ) )
 
                 # Broadcast current state
                 self._broadcast_state(symbol_info, tick)
 
                 # Engine stopped
                 if not self.running:
-                    time.sleep(1)
+                    time.sleep(self.loop_interval)
                     continue
 
                 # Daily loss circuit breaker
                 if self.daily_loss_blocked:
-                    time.sleep(1)
+                    time.sleep(self.loop_interval)
                     continue
 
                 # Maximum position check
                 can_trade, reason = (can_open_position(self.config))
 
                 if not can_trade:
-                    time.sleep(1)
+                    time.sleep(self.loop_interval)
                     continue
 
                 # Spread check
                 (spread_ok, spread_message, spread) = check_spread(self.config, symbol_info, tick)
 
                 if not spread_ok:
-                    time.sleep(1)
+                    time.sleep(self.loop_interval)
                     continue
 
                 # Fetch historical data
                 data = (self._fetch_historical_data(symbol, self.config["timeframe"], count=100))
 
                 if data is None:
-                    time.sleep(1)
+                    time.sleep(self.loop_interval)
                     continue
 
                 # Calculate RSI
@@ -162,7 +180,7 @@ class TradingEngine:
                         mt5.ORDER_TYPE_SELL
                     )
                 else:
-                    time.sleep(1)
+                    time.sleep(self.loop_interval)
                     continue
 
                 # Account information
@@ -188,7 +206,7 @@ class TradingEngine:
                             "a valid position size."
                         )
                     )
-                    time.sleep(1)
+                    time.sleep(self.loop_interval)
                     continue
 
                 # Execute order
@@ -202,11 +220,11 @@ class TradingEngine:
                         "volume": volume,
                         "price": (tick.ask if signal == "long" else tick.bid)
                     }
-                time.sleep(1)
+                time.sleep(self.loop_interval)
 
             except Exception:
                 logging.exception("Trading engine error")
-                time.sleep(1)
+                time.sleep(self.loop_interval)
 
     def _sync_positions(self, symbol):
         """
@@ -223,7 +241,6 @@ class TradingEngine:
             return
         # Determie position directi
         has_long = any(
-
             position.type
             == mt5.POSITION_TYPE_BUY
 
@@ -232,7 +249,6 @@ class TradingEngine:
         )
 
         has_short = any(
-
             position.type
             == mt5.POSITION_TYPE_SELL
 
@@ -273,9 +289,7 @@ class TradingEngine:
 
             self.state["daily_loss_blocked"] = True
 
-            # Only alert once for a specific
-            # drawdown value.
-
+            # Only alert once for a specific drawdown value.
             if (self.last_drawdown_alert != round(drawdown, 2)):
                 self._send_alert(message)
 

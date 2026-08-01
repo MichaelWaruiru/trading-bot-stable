@@ -37,15 +37,23 @@ function startBot() {
         max_spread_pips: parseFloat(elements.maxSpread.value)
     };
 
+    console.log("Starting bot with config:", config);
     socket.emit("start_bot", config);
 }
 
 function stopBot() {
+    console.log("Stopping bot");
     socket.emit("stop_bot");
 }
 
+socket.on("connect", function() {
+    console.log("Connected to server via Socket.IO");
+});
+
 // Socket event bindings
 socket.on("price_update", function(data) {
+    console.log("Price update:", data);
+    
     elements.symbolDisplay.innerText = data.symbol;
     elements.priceDisplay.innerText = data.price;
     elements.positionDisplay.innerText = data.position || "NONE";

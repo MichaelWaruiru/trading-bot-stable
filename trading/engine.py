@@ -4,7 +4,7 @@ import MetaTrader5 as mt5
 import pandas as pd
 from datetime import datetime
 from trading.meta5 import get_current_tick, get_symbol_info
-from trading.strategy import calculate_rsi, generate_rsi_signal
+from trading.strategy import calculate_indicators, generate_rsi_signal
 from trading.risk import can_open_position, check_spread, calculate_position_size, get_open_positions, get_daily_starting_equity, check_daily_drawdown
 from trading.execution import execute_market_order
 
@@ -147,14 +147,14 @@ class TradingEngine:
                     continue
 
                 # Fetch historical data
-                data = (self._fetch_historical_data(symbol, self.config["timeframe"], count=100))
+                data = (self._fetch_historical_data(symbol, self.config["timeframe"], count=250))
 
                 if data is None:
                     time.sleep(self.loop_interval)
                     continue
 
                 # Calculate RSI
-                data = calculate_rsi(data)
+                data = calculate_indicators(data)
                 
                 # Exclude the current forming candle
                 closed_data = data.iloc[:-1]
@@ -318,7 +318,7 @@ class TradingEngine:
 
             self.state["daily_loss_blocked"] = False
 
-    def _fetch_historical_data(self, symbol, timeframe, count=100):
+    def _fetch_historical_data(self, symbol, timeframe, count=250):
         rates = (
             mt5.copy_rates_from_pos(
                 symbol,

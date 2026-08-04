@@ -37,6 +37,7 @@ class TradingEngine:
         self.last_drawdown_alert = None
         self.risk_date = datetime.now().date()
         self.daily_starting_equity = (get_daily_starting_equity())
+        self.last_processed_candle = None
 
         if self.daily_starting_equity is None:
             logging.error(
@@ -155,12 +156,14 @@ class TradingEngine:
                 # Calculate RSI
                 data = calculate_rsi(data)
                 
+                # Exclude the current forming candle
                 closed_data = data.iloc[:-1]
                 
                 if len(closed_data) < 2:
                     time.sleep(self.loop_interval)
                     continue
                 
+                # Identify the latest completed candle to avoid processing the same candle multiple times
                 latest_closed_candle = closed_data["time"].iloc[-1]
                 
                 if self.last_processed_candle == latest_closed_candle:

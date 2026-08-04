@@ -18,6 +18,7 @@ class TradingEngine:
         self.last_drawdown_alert = None
         self.risk_date = None
         self.loop_interval = 1
+        self.last_processed_candle = None
         self.state = {
             "current_price": 0.0,
             "position": None,
@@ -153,6 +154,20 @@ class TradingEngine:
 
                 # Calculate RSI
                 data = calculate_rsi(data)
+                
+                closed_data = data.iloc[:-1]
+                
+                if len(closed_data) < 2:
+                    time.sleep(self.loop_interval)
+                    continue
+                
+                latest_closed_candle = closed_data["time"].iloc[-1]
+                
+                if self.last_processed_candle == latest_closed_candle:
+                    time.sleep(self.loop_interval)
+                    continue
+                
+                self.last_processed_candle = latest_closed_candle
 
                 # Generate transition signal
                 signal = (generate_rsi_signal(data))

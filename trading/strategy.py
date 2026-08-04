@@ -8,17 +8,14 @@ def calculate_rsi(data, length=14):
     """
     Calculate RSI for the supplied candle data.
     """
+    data = data.copy()
     data["rsi"] = data.ta.rsi(
         length=length
     )
 
     return data
 
-def generate_rsi_signal(
-    data,
-    oversold=RSI_OVERSOLD,
-    overbought=RSI_OVERBOUGHT
-):
+def generate_rsi_signal(data, oversold=RSI_OVERSOLD, overbought=RSI_OVERBOUGHT):
     """
     Generate a signal only when RSI crosses
     an oversold or overbought threshold.
@@ -43,22 +40,18 @@ def generate_rsi_signal(
     if "rsi" not in data.columns:
         return None
 
-    if len(data) < 2:
+    if len(data) < 3:
 
         return None
 
-    previous_rsi = data["rsi"].iloc[-2]
+    # Exclude the current forming candle
+    closed_data = data.iloc[:-1]
+    
+    previous_rsi = closed_data["rsi"].iloc[-2]
+    current_rsi = closed_data["rsi"].iloc[-1]
 
-    current_rsi = data["rsi"].iloc[-1]
-
-    if pd.isna(
-        previous_rsi
-    ) or pd.isna(
-        current_rsi
-    ):
-
+    if pd.isna(previous_rsi) or pd.isna(current_rsi):
         return None
-
 
     # RSI crossed into oversold territory
     if previous_rsi >= oversold and current_rsi < oversold:

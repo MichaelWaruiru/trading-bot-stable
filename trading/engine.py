@@ -40,27 +40,10 @@ class TradingEngine:
         self.last_processed_candle = None
 
         if self.daily_starting_equity is None:
-            logging.error(
-                (
-                    "Could not determine "
-                    "daily starting equity."
-                )
-            )
-
-        logging.info(
-            (
-                "Trading engine started "
-                "with configuration: %s"
-            ),
-            config
-        )
-
-        self._send_alert(
-            (
-                f"Trading engine started "
-                f"for {config['symbol']}."
-            )
-        )
+            logging.error("Could not determine daily starting equity.")
+            
+        logging.info(f"Trading engine started with configuration: {config}")
+        self._send_alert(f"Trading engine started for {config['symbol']}")
 
     def stop(self):
         self.running = False
@@ -181,12 +164,7 @@ class TradingEngine:
                     time.sleep(1)
                     continue
 
-                logging.info(
-                    (
-                        "New RSI signal: %s"
-                    ),
-                    signal
-                )
+                logging.info(f"New RSI signal: {signal}")
 
                 # Convert signal to order type
                 if signal == "long":
@@ -205,12 +183,7 @@ class TradingEngine:
                 account_info = (mt5.account_info())
 
                 if account_info is None:
-                    self._send_alert(
-                        (
-                            "Could not retrieve "
-                            "MT5 account information."
-                        )
-                    )
+                    self._send_alert("Could not retrieve MT5 account information.")
                     time.sleep(1)
                     continue
 
@@ -218,12 +191,7 @@ class TradingEngine:
                 volume = (calculate_position_size(account_info.balance, self.config["risk_percentage"], self.config["stop_loss_pips"], symbol_info))
 
                 if volume is None:
-                    self._send_alert(
-                        (
-                            "Could not calculate "
-                            "a valid position size."
-                        )
-                    )
+                    self._send_alert("Could not calculate a valid position size.")
                     time.sleep(self.loop_interval)
                     continue
 
@@ -319,24 +287,10 @@ class TradingEngine:
             self.state["daily_loss_blocked"] = False
 
     def _fetch_historical_data(self, symbol, timeframe, count=250):
-        rates = (
-            mt5.copy_rates_from_pos(
-                symbol,
-                timeframe,
-                0,
-                count
-            )
-        )
+        rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, count)
 
         if rates is None:
-            logging.error(
-                (
-                    "Failed to retrieve "
-                    "historical data: %s"
-                ),
-
-                mt5.last_error()
-            )
+            logging.error(f"Failed to retrieve historical data: {mt5.last_error()}")
 
             return None
 
@@ -352,9 +306,7 @@ class TradingEngine:
     def _broadcast_state(self, symbol_info, tick):
         spread = (tick.ask - tick.bid)
 
-        self.socketio.emit(
-
-            "price_update",
+        self.socketio.emit("price_update",
             {
                 "symbol": self.config["symbol"],
                 "bid": round(tick.bid, symbol_info.digits),
@@ -375,13 +327,7 @@ class TradingEngine:
 
         self.state["alerts"].append(message)
 
-        self.socketio.emit(
-
-            "alert",
-            {
-                "message": message
-            }
-        )
+        self.socketio.emit("alert", {"message": message})
         
     def _reset_daily_risk_if_needed(self):
         """
@@ -400,12 +346,4 @@ class TradingEngine:
         self.state["daily_loss_blocked"] = False
         self.state["daily_drawdown"] = 0.0
 
-
-        logging.info(
-            (
-                "Daily risk reset. "
-                "Starting equity: %.2f"
-            ),
-            self.daily_starting_equity
-            or 0
-        )
+        logging.info(f"Daily risk reset. Starting equity: {self.daily_starting_equity or 0}")

@@ -171,9 +171,8 @@ def stop_bot():
     )
 
 # Application startup
-engine = TradingEngine(socketio)
-
-# Start trading engine worker
+# Keep a single shared engine instance so the bot_start event and the worker loop
+# operate on the same configuration and running state.
 engine_thread = Thread(
     target=engine.run,
     daemon=True

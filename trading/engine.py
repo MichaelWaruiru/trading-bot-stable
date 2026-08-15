@@ -161,6 +161,14 @@ class TradingEngine:
                 self.state["last_signal"] = signal
 
                 if signal is None:
+                    recent = data.tail(3)
+                    logging.info(
+                        "No signal: last_rsi=%s ema_50=%s sma_200=%s closed_candle=%s",
+                        recent["rsi"].iloc[-1] if "rsi" in recent.columns else None,
+                        recent["ema_50"].iloc[-1] if "ema_50" in recent.columns else None,
+                        recent["sma_200"].iloc[-1] if "sma_200" in recent.columns else None,
+                        latest_closed_candle,
+                    )
                     time.sleep(1)
                     continue
 

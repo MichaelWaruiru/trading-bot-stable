@@ -60,9 +60,6 @@ def get_open_positions(symbol=None):
     Get actual open positions from MetaTrader 5.
 
     MT5 is treated as the source of truth.
-
-    Returns:
-        tuple: Open positions or empty tuple.
     """
 
     if symbol:
@@ -82,9 +79,7 @@ def count_open_positions(symbol=None):
     """
     Count actual open MT5 positions.
     """
-    positions = get_open_positions(
-        symbol
-    )
+    positions = get_open_positions(symbol)
 
     return len(positions)
 
@@ -101,7 +96,7 @@ def can_open_position(config):
     maximum = config["max_open_positions"]
 
     if open_positions >= maximum:
-        logging.info(f"Maximum open positions reached. Current positions: {len(open_positions)}, max allowed: {config['max_open_positions']}")
+        logging.info(f"Maximum open positions reached. Current positions: {open_positions}, max allowed: {config['max_open_positions']}")
 
         return (
             False,
@@ -241,6 +236,22 @@ def calculate_position_size(account_balance, risk_percentage, stop_loss_pips, sy
         return None
 
     raw_volume = (risk_amount / loss_per_lot)
+    
+    logging.info(
+    "Position size calculation | "
+    "Balance: %s | Risk: %s%% | Risk amount: %s | "
+    "SL: %s pips | Pip size: %s | Tick size: %s | "
+    "Tick value: %s | Loss per lot: %s | Raw volume: %s",
+    account_balance,
+    risk_percentage,
+    risk_amount,
+    stop_loss_pips,
+    pip_size,
+    tick_size,
+    tick_value,
+    loss_per_lot,
+    raw_volume
+)
 
     return normalize_volume(raw_volume, symbol_info)
     

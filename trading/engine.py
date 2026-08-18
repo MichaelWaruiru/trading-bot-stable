@@ -47,9 +47,7 @@ class TradingEngine:
 
     def stop(self):
         self.running = False
-
         logging.info("Trading engine stopped.")
-
         self._send_alert("Trading engine stopped.")
 
     def run(self):
@@ -82,7 +80,6 @@ class TradingEngine:
 
                 if tick is None:
                     logging.error( ( "Unable to retrieve " "current tick for %s. " "MT5 error: %s" ), symbol, mt5.last_error() )
-                    
                     time.sleep(self.loop_interval)
                     continue
 
@@ -123,7 +120,7 @@ class TradingEngine:
                     continue
 
                 # Spread check
-                (spread_ok, spread_message, spread) = check_spread(self.config, symbol_info, tick)
+                spread_ok, spread_message, spread = check_spread(self.config, symbol_info, tick)
 
                 if not spread_ok:
                     time.sleep(self.loop_interval)
@@ -146,22 +143,24 @@ class TradingEngine:
                     time.sleep(self.loop_interval)
                     continue
                 
-                # Identify the latest completed candle to avoid processing the same candle multiple times
+                # Identify the latest completed candle
                 latest_closed_candle = closed_data["time"].iloc[-1]
                 
+                # Avoid processing the same candle multiple times
                 if self.last_processed_candle == latest_closed_candle:
                     time.sleep(self.loop_interval)
                     continue
                 
                 self.last_processed_candle = latest_closed_candle
+                logging.info("Processing closed candle: %s", latest_closed_candle)
 
                 # Generate transition signal
-                signal = (generate_rsi_signal(data))
+                signal = (generate_rsi_signal(closed_data))
 
                 self.state["last_signal"] = signal
 
                 if signal is None:
-                    recent = data.tail(3)
+                    recent = closed_data.tail(3)
                     logging.info(
                         "No signal: last_rsi=%s ema_50=%s sma_200=%s closed_candle=%s",
                         recent["rsi"].iloc[-1] if "rsi" in recent.columns else None,
@@ -204,7 +203,7 @@ class TradingEngine:
                     continue
 
                 # Execute order
-                (success, message, result) = execute_market_order(self.config, symbol_info, tick, order_type, volume)
+                success, message, result = execute_market_order(self.config, symbol_info, tick, order_type, volume)
 
                 self._send_alert(message)
 
@@ -233,22 +232,10 @@ class TradingEngine:
             self.state["position"] = None
 
             return
-        # Determie position directi
-        has_long = any(
-            position.type
-            == mt5.POSITION_TYPE_BUY
-
-            for position
-            in positions
-        )
-
-        has_short = any(
-            position.type
-            == mt5.POSITION_TYPE_SELL
-
-            for position
-            in positions
-        )
+        
+        # Determie position direction
+        has_long = any(position.type == mt5.POSITION_TYPE_BUY for position in positions)
+        has_short = any(position.type == mt5.POSITION_TYPE_SELL for position in positions)
 
         if has_long and has_short:
             self.state["position"] = "mixed"
@@ -274,7 +261,7 @@ class TradingEngine:
         if account_info is None:
             return
 
-        (allowed, message, drawdown) = check_daily_drawdown(self.config, self.daily_starting_equity, account_info.equity)
+        allowed, message, drawdown = check_daily_drawdown(self.config, self.daily_starting_equity, account_info.equity)
 
         self.state["daily_drawdown"] = drawdown
 

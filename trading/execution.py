@@ -55,6 +55,7 @@ def execute_market_order(config, symbol_info, tick, order_type, volume):
     Returns:
         tuple[bool, str, object]
     """
+    logging.info(f"execute_market_order called with: config={config}, symbol_info={symbol_info}, tick={tick}, order_type={order_type}, volume={volume}")
     try:
         symbol = config["symbol"]
         entry_price = get_order_price(tick, order_type)
@@ -67,6 +68,15 @@ def execute_market_order(config, symbol_info, tick, order_type, volume):
         if sl is None or tp is None:
             logging.error("Failed to calculate SL/TP.")
             return False, "Failed to calculate SL/TP.", None
+        
+        if symbol_info.filling_mode & 1:
+            filling_mode = mt5.ORDER_FILLING_FOK
+        elif symbol_info.filling_mode & 2:
+            filling_mode = mt5.ORDER_FILLING_IOC
+        else:
+            filling_mode = mt5.ORDER_FILLING_RETURN
+
+        logging.info(f"Selected filling mode: {filling_mode}")
 
         request = {
 
@@ -81,9 +91,10 @@ def execute_market_order(config, symbol_info, tick, order_type, volume):
             "magic": 123456,
             "comment": "Python Bot Order",
             "type_time": mt5.ORDER_TIME_GTC,
-            "type_filling": mt5.ORDER_FILLING_IOC
+            "type_filling": filling_mode
         }
 
+        logging.info(f"Order request: {request}")
         logging.info(f"Preparing order: {symbol} | Volume: {volume} | Entry: {entry_price} | SL: {sl} | TP: {tp}")
 
         # Validate order with MT5 before execution

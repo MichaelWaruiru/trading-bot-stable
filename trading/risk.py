@@ -1,6 +1,7 @@
 import math
 from datetime import datetime
 import MetaTrader5 as mt5
+import logging
 
 def validate_trading_config(config):
     """
@@ -95,13 +96,13 @@ def can_open_position(config):
     Returns:
         tuple[bool, str]
     """
-    open_positions = count_open_positions(
-        config["symbol"]
-    )
+    open_positions = count_open_positions(config["symbol"])
 
     maximum = config["max_open_positions"]
 
     if open_positions >= maximum:
+        logging.info(f"Maximum open positions reached. Current positions: {len(open_positions)}, max allowed: {config['max_open_positions']}")
+
         return (
             False,
             (
@@ -111,11 +112,9 @@ def can_open_position(config):
                 f"{maximum}"
             )
         )
-
-    return (
-        True,
-        "Position limit check passed."
-    )
+        
+    logging.info(f"Position limit check passed. Current positions: {open_positions}, max allowed: {maximum}")
+    return True, "Position limit check passed."
 
 def get_pip_size(symbol_info):
     """
@@ -140,10 +139,7 @@ def get_spread_pips(symbol_info, tick):
     """
     Calculate current spread in pips.
     """
-    pip_size = get_pip_size(
-        symbol_info
-    )
-
+    pip_size = get_pip_size(symbol_info)
     spread = tick.ask - tick.bid
 
     return spread / pip_size
@@ -157,27 +153,19 @@ def check_spread(config, symbol_info, tick):
         tuple[bool, str, float]
     """
     spread_pips = get_spread_pips(symbol_info, tick)
-
     maximum_spread = config["max_spread_pips"]
+    logging.info(f"Checking spread: {spread_pips} pips, max allowed: {maximum_spread} pips")
 
     if spread_pips > maximum_spread:
         return (
             False,
-            (
-                f"Spread too high: "
-                f"{spread_pips:.2f} pips "
-                f"(maximum "
-                f"{maximum_spread:.2f})"
-            ),
+            f"Spread too high: {spread_pips:.2f} pips (maximum {maximum_spread:.2f})",
             spread_pips
         )
 
     return (
         True,
-        (
-            f"Spread acceptable: "
-            f"{spread_pips:.2f} pips"
-        ),
+        f"Spread acceptable: {spread_pips:.2f} pips",
         spread_pips
     )
 
@@ -194,29 +182,13 @@ def normalize_volume(volume, symbol_info):
     if volume_step <= 0:
         return None
 
-    volume = max(
-        volume_min,
-        min(
-            volume,
-            volume_max
-        )
-    )
+    volume = max(volume_min, min(volume, volume_max))
 
-    steps = math.floor(
-        volume / volume_step
-    )
+    steps = math.floor(volume / volume_step)
 
-    normalized_volume = (
-        steps * volume_step
-    )
+    normalized_volume = (steps * volume_step)
 
-    normalized_volume = max(
-        volume_min,
-        min(
-            normalized_volume,
-            volume_max
-        )
-    )
+    normalized_volume = max(volume_min, min(normalized_volume, volume_max))
 
     # Determine decimal precision
     # required by the volume step.
@@ -326,13 +298,8 @@ def calculate_daily_drawdown(starting_equity, current_equity):
     if starting_equity <= 0:
         return None
 
-    drawdown = (
-        (
-            starting_equity
-            - current_equity
-        )
-        / starting_equity
-    ) * 100
+    # Calculate the drawdown percentage
+    drawdown = ((starting_equity - current_equity) / starting_equity) * 100
 
     return max(0.0, drawdown)
 
@@ -352,32 +319,19 @@ def check_daily_drawdown(config, starting_equity, current_equity):
     drawdown = calculate_daily_drawdown(starting_equity, current_equity)
 
     if drawdown is None:
-        return (
-            False,
-            "Unable to calculate daily drawdown.",
-            0.0
-        )
+        return False, "Unable to calculate daily drawdown.", 0.0
 
     maximum_drawdown = config["max_daily_loss_percentage"]
 
     if drawdown >= maximum_drawdown:
         return (
             False,
-            (
-                f"DAILY LOSS LIMIT BREACHED: "
-                f"{drawdown:.2f}% "
-                f"(maximum "
-                f"{maximum_drawdown:.2f}%). "
-                f"New trades are blocked."
-            ),
+            f"DAILY LOSS LIMIT BREACHED: {drawdown:.2f}% (maximum {maximum_drawdown:.2f}%). New trades are blocked.",
             drawdown
         )
 
     return (
         True,
-        (
-            f"Daily drawdown acceptable: "
-            f"{drawdown:.2f}%"
-        ),
+        f"Daily drawdown acceptable: {drawdown:.2f}%",
         drawdown
     )

@@ -10,94 +10,38 @@ def get_order_price(tick, order_type):
     """
 
     if order_type == mt5.ORDER_TYPE_BUY:
-
         return tick.ask
 
     if order_type == mt5.ORDER_TYPE_SELL:
-
         return tick.bid
 
     return None
 
 def calculate_sl_tp(entry_price, order_type, stop_loss_pips, take_profit_pips, symbol_info):
     """
-    Calculate Stop Loss and Take Profit
-    based on the entry price.
+    Calculate Stop Loss and Take Profit based on the entry price.
     """
 
+    # Calculate the point value based on the symbol's precision
+    point_value = symbol_info.point * (10 if symbol_info.digits in (3, 5) else 1)
+
     if order_type == mt5.ORDER_TYPE_BUY:
-
-        sl = (
-            entry_price
-            - (
-                stop_loss_pips
-                * (
-                    symbol_info.point
-                    * (
-                        10
-                        if symbol_info.digits
-                        in (3, 5)
-                        else 1
-                    )
-                )
-            )
-        )
-
-        tp = (
-            entry_price
-            + (
-                take_profit_pips
-                * (
-                    symbol_info.point
-                    * (
-                        10
-                        if symbol_info.digits
-                        in (3, 5)
-                        else 1
-                    )
-                )
-            )
-        )
-
+        # Calculate Stop Loss for a BUY order
+        sl = entry_price - (stop_loss_pips * point_value)
+        # Calculate Take Profit for a BUY order
+        tp = entry_price + (take_profit_pips * point_value)
 
     elif order_type == mt5.ORDER_TYPE_SELL:
-
-        sl = (
-            entry_price
-            + (
-                stop_loss_pips
-                * (
-                    symbol_info.point
-                    * (
-                        10
-                        if symbol_info.digits
-                        in (3, 5)
-                        else 1
-                    )
-                )
-            )
-        )
-
-        tp = (
-            entry_price
-            - (
-                take_profit_pips
-                * (
-                    symbol_info.point
-                    * (
-                        10
-                        if symbol_info.digits
-                        in (3, 5)
-                        else 1
-                    )
-                )
-            )
-        )
+        # Calculate Stop Loss for a SELL order
+        sl = entry_price + (stop_loss_pips * point_value)
+        # Calculate Take Profit for a SELL order
+        tp = entry_price - (take_profit_pips * point_value)
 
     else:
-
+        # Return None if the order type is not recognized
         return None, None
 
+    # Round the calculated values to the correct number of decimal places
     sl = round(sl, symbol_info.digits)
     tp = round(tp, symbol_info.digits)
 
@@ -111,138 +55,63 @@ def execute_market_order(config, symbol_info, tick, order_type, volume):
     Returns:
         tuple[bool, str, object]
     """
+    try:
+        symbol = config["symbol"]
+        entry_price = get_order_price(tick, order_type)
 
-    symbol = config[
-        "symbol"
-    ]
+        if entry_price is None:
+            return False, "Invalid order type.", None
 
-    entry_price = get_order_price(
-        tick,
-        order_type
-    )
+        sl, tp = calculate_sl_tp(entry_price, order_type, config["stop_loss_pips"], config["take_profit_pips"], symbol_info)
 
-    if entry_price is None:
+        if sl is None or tp is None:
+            logging.error("Failed to calculate SL/TP.")
+            return False, "Failed to calculate SL/TP.", None
 
-        return (
-            False,
-            "Invalid order type.",
-            None
-        )
+        request = {
 
-    sl, tp = calculate_sl_tp(
-        entry_price,
-        order_type,
-        config[
-            "stop_loss_pips"
-        ],
-        config[
-            "take_profit_pips"
-        ],
-        symbol_info
-    )
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": symbol,
+            "volume": volume,
+            "type": order_type,
+            "price": entry_price,
+            "sl": sl,
+            "tp": tp,
+            "deviation": 20,
+            "magic": 123456,
+            "comment": "Python Bot Order",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC
+        }
 
-    if sl is None or tp is None:
+        logging.info(f"Preparing order: {symbol} | Volume: {volume} | Entry: {entry_price} | SL: {sl} | TP: {tp}")
 
-        return (
-            False,
-            "Failed to calculate SL/TP.",
-            None
-        )
+        # Validate order with MT5 before execution
+        check_result = mt5.order_check(request)
 
-    request = {
+        if check_result is None:
+            logging.error(f"MT5 order_check() failed: {mt5.last_error()}")
+            return False, f"MT5 order_check() failed.", None
 
-        "action": mt5.TRADE_ACTION_DEAL,
-        "symbol": symbol,
-        "volume": volume,
-        "type": order_type,
-        "price": entry_price,
-        "sl": sl,
-        "tp": tp,
-        "deviation": 20,
-        "magic": 123456,
-        "comment": "Python Bot Order",
-        "type_time": mt5.ORDER_TIME_GTC,
-        "type_filling": mt5.ORDER_FILLING_IOC
-    }
+        if check_result.retcode != 0:
+            logging.error(f"Order validation failed: {check_result.comment}")
+            return False, f"Order validation failed: {check_result.comment}", check_result
 
-    logging.info(
-        "Preparing order: "
-        "%s | Volume: %s | "
-        "Entry: %s | SL: %s | TP: %s",
-        symbol,
-        volume,
-        entry_price,
-        sl,
-        tp
-    )
+        # Execute order
+        result = mt5.order_send(request)
 
-    # Validate order with MT5 before execution
-    check_result = mt5.order_check(
-        request
-    )
+        if result is None:
+            logging.error(f"MT5 order_send() returned None: {mt5.last_error()}")
+            return False, f"MT5 order_send() returned None.", None
 
-    if check_result is None:
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            logging.error(f"Order execution failed: {result.retcode} - {result.comment}")
+            return False, f"Order execution failed: {result.retcode} - {result.comment}", result
 
-        return (
-            False,
-            (
-                "MT5 order_check() failed: "
-                f"{mt5.last_error()}"
-            ),
-            None
-        )
+        logging.info(f"Order executed successfully: {symbol} | Ticket: {result.order}")
 
-    if check_result.retcode != 0:
+        return True, f"Order executed successfully. Ticket: {result.order}", result
 
-        return (
-            False,
-            (
-                "Order validation failed: "
-                f"{check_result.comment}"
-            ),
-            check_result
-        )
-
-    # Execute order
-    result = mt5.order_send(
-        request
-    )
-
-    if result is None:
-
-        return (
-            False,
-            (
-                "MT5 order_send() returned "
-                f"None: {mt5.last_error()}"
-            ),
-            None
-        )
-
-    if result.retcode != mt5.TRADE_RETCODE_DONE:
-
-        return (
-            False,
-            (
-                "Order execution failed: "
-                f"{result.retcode} - "
-                f"{result.comment}"
-            ),
-            result
-        )
-
-    logging.info(
-        "Order executed successfully: "
-        "%s | Ticket: %s",
-        symbol,
-        result.order
-    )
-
-    return (
-        True,
-        (
-            f"Order executed successfully. "
-            f"Ticket: {result.order}"
-        ),
-        result
-    )
+    except Exception as e:
+        logging.error(f"Exception during order execution: {e}")
+        return False, str(e), None

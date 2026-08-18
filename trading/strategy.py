@@ -1,5 +1,6 @@
 import pandas as pd
 import pandas_ta as ta
+import logging
 
 RSI_OVERSOLD = 30
 RSI_OVERBOUGHT = 70
@@ -21,9 +22,11 @@ def calculate_indicators(data):
 
     data["sma_200"] = data.ta.sma(length=SMA_LENGTH)
 
+    logging.info(f"Calculated indicators with data: {data}")
     return data
 
 def generate_rsi_signal(data, oversold=RSI_OVERSOLD, overbought=RSI_OVERBOUGHT):
+    logging.info(f"Generating RSI signal with data: {data}")
     """
     Generate an RSI transition signal using completed candles only.
 

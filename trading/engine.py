@@ -116,6 +116,7 @@ class TradingEngine:
                 can_trade, reason = (can_open_position(self.config))
 
                 if not can_trade:
+                    self._send_alert(reason)
                     time.sleep(self.loop_interval)
                     continue
 
@@ -123,6 +124,7 @@ class TradingEngine:
                 spread_ok, spread_message, spread = check_spread(self.config, symbol_info, tick)
 
                 if not spread_ok:
+                    self._send_alert(spread_message)
                     time.sleep(self.loop_interval)
                     continue
 
@@ -248,6 +250,14 @@ class TradingEngine:
 
         else:
             self.state["position"] = None
+            
+        # An alert when a position is found
+        if self.state["position"] is not None:
+            self._send_alert(f"Position found: {self.state['position']}")
+
+        # An alert when trading is happening
+        if self.state["last_trade"] is not None:
+            self._send_alert("Trading is happening")
 
     def _check_daily_risk(self):
         """

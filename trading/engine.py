@@ -205,7 +205,7 @@ class TradingEngine:
                     continue
 
                 # Execute order
-                success, message, result = execute_market_order(self.config, symbol_info, tick, order_type, volume)
+                success, message, _ = execute_market_order(self.config, symbol_info, tick, order_type, volume)
 
                 self._send_alert(message)
 

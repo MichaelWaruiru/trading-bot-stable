@@ -22,7 +22,7 @@ def calculate_indicators(data):
 
     data["sma_200"] = data.ta.sma(length=SMA_LENGTH)
 
-    logging.info(f"Calculated indicators with data: {data}")
+    # logging.info(f"Calculated indicators with data: {data}")
     return data
 
 def generate_rsi_signal(data, oversold=RSI_OVERSOLD, overbought=RSI_OVERBOUGHT):

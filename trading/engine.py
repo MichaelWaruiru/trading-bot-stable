@@ -36,7 +36,7 @@ class TradingEngine:
         self.daily_loss_blocked = False
         self.last_drawdown_alert = None
         self.risk_date = datetime.now().date()
-        self.daily_starting_equity = (get_daily_starting_equity())
+        self.daily_starting_equity = get_daily_starting_equity()
         self.last_processed_candle = None
 
         if self.daily_starting_equity is None:
@@ -67,7 +67,7 @@ class TradingEngine:
                 symbol = self.config["symbol"]
 
                 # Get symbol information
-                symbol_info = (get_symbol_info(symbol))
+                symbol_info = get_symbol_info(symbol)
 
                 if symbol_info is None:
                     logging.error( ( "Unable to retrieve " "symbol information " "for %s. MT5 error: %s" ), symbol, mt5.last_error() )
@@ -76,7 +76,7 @@ class TradingEngine:
                     continue
 
                 # Get latest tick
-                tick = (get_current_tick(symbol))
+                tick = get_current_tick(symbol)
 
                 if tick is None:
                     logging.error( ( "Unable to retrieve " "current tick for %s. " "MT5 error: %s" ), symbol, mt5.last_error() )
@@ -113,7 +113,7 @@ class TradingEngine:
                     continue
 
                 # Maximum position check
-                can_trade, reason = (can_open_position(self.config))
+                can_trade, reason = can_open_position(self.config)
 
                 if not can_trade:
                     self._send_alert(reason)
@@ -129,7 +129,7 @@ class TradingEngine:
                     continue
 
                 # Fetch historical data
-                data = (self._fetch_historical_data(symbol, self.config["timeframe"], count=250))
+                data = self._fetch_historical_data(symbol, self.config["timeframe"], count=250)
 
                 if data is None:
                     time.sleep(self.loop_interval)
@@ -157,7 +157,7 @@ class TradingEngine:
                 logging.info("Processing closed candle: %s", latest_closed_candle)
 
                 # Generate transition signal
-                signal = (generate_rsi_signal(closed_data))
+                signal = generate_rsi_signal(closed_data)
 
                 self.state["last_signal"] = signal
 
@@ -174,22 +174,28 @@ class TradingEngine:
                     continue
 
                 logging.info(f"New RSI signal: {signal}")
+                
+                # signal = generate_rsi_signal(closed_data)
+
+                # self.state["last_signal"] = signal
+
+                # if signal is None:
+                #     logging.info("No RSI signal. Testing BUY order execution.")
+                #     signal = "long"
+
+                # logging.info(f"Trading signal: {signal}")
 
                 # Convert signal to order type
                 if signal == "long":
-                    order_type = (
-                        mt5.ORDER_TYPE_BUY
-                    )
+                    order_type = mt5.ORDER_TYPE_BUY
                 elif signal == "short":
-                    order_type = (
-                        mt5.ORDER_TYPE_SELL
-                    )
+                    order_type = mt5.ORDER_TYPE_SELL
                 else:
                     time.sleep(self.loop_interval)
                     continue
 
                 # Account information
-                account_info = (mt5.account_info())
+                account_info = mt5.account_info()
 
                 if account_info is None:
                     self._send_alert("Could not retrieve MT5 account information.")
@@ -197,7 +203,7 @@ class TradingEngine:
                     continue
 
                 # Calculate position size
-                volume = (calculate_position_size(account_info.balance, self.config["risk_percentage"], self.config["stop_loss_pips"], symbol_info))
+                volume = calculate_position_size(account_info.balance, self.config["risk_percentage"], self.config["stop_loss_pips"], symbol_info)
 
                 if volume is None:
                     self._send_alert("Could not calculate a valid position size.")
@@ -226,7 +232,7 @@ class TradingEngine:
         Synchronize local state with actual
         MetaTrader 5 positions.
         """
-        positions = (get_open_positions(symbol))
+        positions = get_open_positions(symbol)
 
         self.state["open_positions"] = len(positions)
 
@@ -267,7 +273,7 @@ class TradingEngine:
         if self.daily_starting_equity is None:
             return
 
-        account_info = (mt5.account_info())
+        account_info = mt5.account_info()
         if account_info is None:
             return
 
@@ -345,7 +351,7 @@ class TradingEngine:
             return
 
         self.risk_date = today
-        self.daily_starting_equity = (get_daily_starting_equity())
+        self.daily_starting_equity = get_daily_starting_equity()
         self.daily_loss_blocked = False
         self.last_drawdown_alert = None
         self.state["daily_loss_blocked"] = False
